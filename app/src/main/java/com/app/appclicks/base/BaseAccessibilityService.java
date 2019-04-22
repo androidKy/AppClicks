@@ -149,11 +149,17 @@ public abstract class BaseAccessibilityService extends AccessibilityService {
     /**
      * 模拟返回操作
      */
-    public void performBackClick(Handler handler) {
+    public void performBackClick(final Handler handler) {
         handler.postDelayed(new Runnable() {
             @Override
             public void run() {
                 performGlobalAction(GLOBAL_ACTION_BACK);
+                handler.postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        performGlobalAction(GLOBAL_ACTION_BACK);
+                    }
+                }, 2000);
             }
         }, 2000);
         /*try {

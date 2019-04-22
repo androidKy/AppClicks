@@ -33,17 +33,9 @@ public class CommonListService extends BaseAccessibilityService {
     private int mCommentClickedCount;
     private AccessibilityNodeInfo mLastNodeInfo;
 
-    private int mRepeatCountForFindSendWidget = 0;
+    private PageType mCurPageType;   //当前处于哪一界面
 
-
-    private boolean mStarted = false; //评论是否已被点击
-    private boolean mTalked = false;    //私信是否已被点击
-    private boolean mSent = false;  //信息是否已发送
-    //private boolean mListViewFound;
-    private AccessibilityNodeInfo sendNode;
-    private AccessibilityNodeInfo editNode;
-    private AccessibilityNodeInfo imageNode;
-    private boolean mIsBacked;
+    private AccessibilityNodeInfo mHistoryNode;
 
     @Override
     public void onCreate() {
@@ -71,34 +63,17 @@ public class CommonListService extends BaseAccessibilityService {
         if (eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
                 || eventType == AccessibilityEvent.TYPE_VIEW_SCROLLED) {
             findListViewInVideoPage(getRootInActiveWindow());
-        }
+            if (mCurPageType == PageType.COMMENT_PAGE)
+                doOnUserInfoPage();
+            if (mCurPageType == PageType.USER_INFO_PAGE)
+                findEditTextInTalkPage(getRootInActiveWindow());
 
-        if (mStarted
-                || eventType == AccessibilityEvent.TYPE_VIEW_CONTEXT_CLICKED
-                || eventType == AccessibilityEvent.TYPE_VIEW_CLICKED
-                || eventType == AccessibilityEvent.TYPE_VIEW_LONG_CLICKED) {
-            doOnUserInfoPage();
-        }
-        if (mTalked
-                || eventType == AccessibilityEvent.TYPE_VIEW_CONTEXT_CLICKED
-                || eventType == AccessibilityEvent.TYPE_VIEW_CLICKED
-                || eventType == AccessibilityEvent.TYPE_VIEW_LONG_CLICKED) {
-            sleep();
-            findEditTextInTalkPage(getRootInActiveWindow());
-        }
-
-    }
-
-    private void sleep() {
-        try {
-            Thread.sleep(2000);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
         }
     }
 
     private void performBack() {
-
+        mHistoryNode = null;
+        mCurPageType = null;
         performBackClick(mHandler);
        /* AccessibilityNodeInfo backNode = findViewByRootID(Constants.ResourceId.Back_TextView);
         L.i("返回: backNode = " + backNode);
@@ -118,7 +93,7 @@ public class CommonListService extends BaseAccessibilityService {
         if (nodeInfo.getClassName() != null && nodeInfo.getClassName().equals(Constants.Widget.ListView)) {
             L.i("listView ClassName: " + nodeInfo.getClassName());
             //mListViewFound = true;
-            sleep();
+            mCurPageType = PageType.COMMENT_PAGE;
             doOnCommentPage(nodeInfo);
         }
     }
@@ -129,7 +104,7 @@ public class CommonListService extends BaseAccessibilityService {
     private void doOnCommentPage(AccessibilityNodeInfo listViewNode) {
         // AccessibilityNodeInfo listViewNode = findViewByRootID(Constants.ResourceId.Video_ListView);
         if (listViewNode != null) {
-            resetStatus();
+
             L.i("className: " + listViewNode.getClassName());   //ListView
             List<AccessibilityNodeInfo> clickNodeList = new ArrayList<>();  //头像的node列表
             // List<AccessibilityNodeInfo> titleNodeList = new ArrayList<>();  //用户名的node列表
@@ -182,12 +157,11 @@ public class CommonListService extends BaseAccessibilityService {
                     }
                 }*/
 
-                mStarted = true;
                 performViewClick(clickNodeInfo);
             } else {
                 mCurCommentCount = 0;
                 mCommentClickedCount = 0;
-                resetStatus();
+
                 L.i("当前界面无评论");
             }
         }
@@ -197,62 +171,52 @@ public class CommonListService extends BaseAccessibilityService {
      * 在用户信息界面点击私信
      */
     private void doOnUserInfoPage() {
-        sleep();
         final AccessibilityNodeInfo talkInfo = findViewByText("私信", true);
         if (talkInfo != null && talkInfo.getClassName().equals(Constants.Widget.TextView)) {
             L.i("talk info: " + talkInfo.getText().toString());
-            if (mSent) {  //返回视频播放评论界面
-                //mListViewFound = false;
-                resetStatus();
-                imageNode = null;
-                mIsBacked = false;
-                performBack();
-                return;
-            }
-            if (mTalked)
-                return;
-            mTalked = true;
-            performViewClick(talkInfo);
+            mCurPageType = PageType.USER_INFO_PAGE;
+
+            mHandler.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    performViewClick(talkInfo);
+                }
+            }, 2000);
+
         }
     }
 
 
     private void findEditTextInTalkPage(AccessibilityNodeInfo nodeInfo) {
-        if (mSent) {
-            return;
-        }
         if (nodeInfo == null) return;
         L.i("node className: " + nodeInfo.getClassName());
         for (int i = 0; i < nodeInfo.getChildCount(); i++) {
             findEditTextInTalkPage(nodeInfo.getChild(i));
         }
-        if (nodeInfo.getClassName() != null && nodeInfo.getClassName().equals(Constants.Widget.ImageView)) {
-            L.i("image className: " + nodeInfo.getClassName());
-            // if (imageNode == null)
-            imageNode = nodeInfo;
-        }
-        if (nodeInfo.getClassName() != null && nodeInfo.getClassName().equals(Constants.Widget.EditText)) {
 
+        if (nodeInfo.getClassName() != null && nodeInfo.getClassName().equals(Constants.Widget.EditText)) {
             L.i("editText ClassName: " + nodeInfo.getClassName());
-            editNode = nodeInfo;
+            mCurPageType = PageType.SEND_MSG_PAGE;
+            findHistoryMsg(getRootInActiveWindow());
+            AccessibilityNodeInfo editNode = nodeInfo;
             L.i("ediText parent: " + editNode.getParent().getClassName());
             L.i("send node : " + editNode.getParent().getChild(1).getClassName());
-            sendNode = editNode.getParent().getChild(1).getChild(0);
-            mSent = true;
-            if (imageNode == null) {
+            //private boolean mListViewFound;
+            AccessibilityNodeInfo sendNode = editNode.getParent().getChild(1).getChild(0);
+            if (mHistoryNode == null) {
                 doTalkOnPage(editNode, sendNode);
             } else {
                 performBack();
             }
             L.i("send node className: " + sendNode.getText());
         }
-
     }
+
 
     /**
      * 在用户聊天界面发送消息
      */
-    private void doTalkOnPage(AccessibilityNodeInfo editNode1, AccessibilityNodeInfo sendNode1) {
+    private void doTalkOnPage(AccessibilityNodeInfo editNode, AccessibilityNodeInfo sendNode) {
         Bundle arguments = new Bundle();
         arguments.putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, mMsg);
         editNode.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, arguments);
@@ -260,12 +224,24 @@ public class CommonListService extends BaseAccessibilityService {
         performBack();  //todo 网络延时
     }
 
+    /**
+     * 查找是否有历史消息
+     *
+     * @param nodeInfo
+     */
+    private void findHistoryMsg(AccessibilityNodeInfo nodeInfo) {
+        if (nodeInfo == null) return;
+        for (int i = 0; i < nodeInfo.getChildCount(); i++) {
+            findHistoryMsg(nodeInfo.getChild(i));
+        }
 
-    private void resetStatus() {
-        mStarted = false;
-        mTalked = false;
-        mSent = false;
+        if (nodeInfo.getClassName() != null && nodeInfo.getClassName().equals(Constants.Widget.ImageView)) {
+            L.i("image className: " + nodeInfo.getClassName());
+            // if (imageNode == null)
+            mHistoryNode = nodeInfo;
+        }
     }
+
 
     private Handler mHandler = new Handler(Looper.getMainLooper());
 }
