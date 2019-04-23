@@ -1,7 +1,6 @@
 package com.app.appclicks.service;
 
 import android.accessibilityservice.AccessibilityServiceInfo;
-import android.graphics.Rect;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -9,6 +8,9 @@ import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
 
 import com.app.appclicks.base.BaseAccessibilityService;
+import com.app.appclicks.enum_type.PageTypeEnum;
+import com.app.appclicks.service.type.AttentionService;
+import com.app.appclicks.service.type.CommentService;
 import com.app.appclicks.util.Constants;
 import com.safframework.log.L;
 
@@ -27,20 +29,22 @@ import java.util.List;
  * <p>
  * }
  */
-public class CommonListService extends BaseAccessibilityService {
+public class CommonService extends BaseAccessibilityService implements PerformBackListener {
 
-    private int mCurCommentCount;
-    private int mCommentClickedCount;
-    private AccessibilityNodeInfo mLastNodeInfo;
+    private int mCurCommentCount;   //当前可看见的评论个数
+    private int mCommentClickedCount;   //已点击的评论个数
+    private AccessibilityNodeInfo mLastNodeInfo;    //当前可看见的评论个数的最后一个
 
-    private PageType mCurPageType;   //当前处于哪一界面
+    private PageTypeEnum mCurPageType;   //当前处于哪一界面
 
-    private AccessibilityNodeInfo mHistoryNode;
+    private AccessibilityNodeInfo mHistoryNode; //历史消息
+
+    private int mPageSwitchTime = 1;  //单位秒
 
     @Override
     public void onCreate() {
         super.onCreate();
-        L.init(CommonListService.class);
+        L.init(CommonService.class);
     }
 
     @Override
@@ -62,25 +66,29 @@ public class CommonListService extends BaseAccessibilityService {
         int eventType = event.getEventType();
         if (eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
                 || eventType == AccessibilityEvent.TYPE_VIEW_SCROLLED) {
-            findListViewInVideoPage(getRootInActiveWindow());
-            if (mCurPageType == PageType.COMMENT_PAGE)
-                doOnUserInfoPage();
-            if (mCurPageType == PageType.USER_INFO_PAGE)
-                findEditTextInTalkPage(getRootInActiveWindow());
-
+            // sendMsg2Comment();
+            CommentService.Companion.getInstance().onAccessibilityEvent(event, getRootInActiveWindow(), this);
+            AttentionService.getInstance().onAccessibilityEvent(event, getRootInActiveWindow(), this);
         }
     }
 
+
+    private void sendMsg2Comment() {
+        findListViewInVideoPage(getRootInActiveWindow());
+        if (mCurPageType == PageTypeEnum.COMMENT_PAGE) {
+            doOnUserInfoPage();
+        }
+        if (mCurPageType == PageTypeEnum.USER_INFO_PAGE)
+            findEditTextInTalkPage(getRootInActiveWindow());
+    }
+
+    /**
+     * 从当前界面返回
+     */
     private void performBack() {
         mHistoryNode = null;
         mCurPageType = null;
-        performBackClick(mHandler);
-       /* AccessibilityNodeInfo backNode = findViewByRootID(Constants.ResourceId.Back_TextView);
-        L.i("返回: backNode = " + backNode);
-        if (backNode != null) {
-            L.i("返回: backNode = " + backNode.getClassName());
-            performViewClick(backNode);
-        }*/
+        performBackClick(mHandler, mPageSwitchTime);
     }
 
     private void findListViewInVideoPage(AccessibilityNodeInfo nodeInfo) {
@@ -93,7 +101,7 @@ public class CommonListService extends BaseAccessibilityService {
         if (nodeInfo.getClassName() != null && nodeInfo.getClassName().equals(Constants.Widget.ListView)) {
             L.i("listView ClassName: " + nodeInfo.getClassName());
             //mListViewFound = true;
-            mCurPageType = PageType.COMMENT_PAGE;
+            mCurPageType = PageTypeEnum.COMMENT_PAGE;
             doOnCommentPage(nodeInfo);
         }
     }
@@ -107,7 +115,7 @@ public class CommonListService extends BaseAccessibilityService {
 
             L.i("className: " + listViewNode.getClassName());   //ListView
             List<AccessibilityNodeInfo> clickNodeList = new ArrayList<>();  //头像的node列表
-            // List<AccessibilityNodeInfo> titleNodeList = new ArrayList<>();  //用户名的node列表
+            List<AccessibilityNodeInfo> titleNodeList = new ArrayList<>();  //用户名的node列表
             for (int i = 0; i < listViewNode.getChildCount(); i++) {
                 AccessibilityNodeInfo childInfo = listViewNode.getChild(i); //LinearLayout
                 if (childInfo.getClassName().equals(Constants.Widget.LinearLayout)) {
@@ -117,14 +125,10 @@ public class CommonListService extends BaseAccessibilityService {
                             clickNodeList.add(frameLayoutNode);
                         }
                     }
-                   /* if (childInfo.getChildCount() > 1) {
-                        AccessibilityNodeInfo linearLayoutNode = childInfo.getChild(1); //LinearLayout
-                        AccessibilityNodeInfo textViewNode = findViewByNodeId(linearLayoutNode, Constants.ResourceId.Comment_TextView);
-                        if (textViewNode != null) {
-                            L.i("textView : " + textViewNode.getClassName() + " text: " + textViewNode.getText().toString());
-                            titleNodeList.add(textViewNode);
-                        }
-                    }*/
+                    if (childInfo.getChildCount() > 1) {
+                        AccessibilityNodeInfo textViewNode = childInfo.getChild(1).getChild(0).getChild(0); //LinearLayout
+                        titleNodeList.add(textViewNode);
+                    }
                 }
             }
             //已开始任务
@@ -132,7 +136,7 @@ public class CommonListService extends BaseAccessibilityService {
                 //任务已做完一轮
                 if (mCurCommentCount - 1 == mCommentClickedCount) {
                     //把所有状态重置
-                    //  mLastNodeInfo = titleNodeList.get(mCommentClickedCount);
+                    mLastNodeInfo = titleNodeList.get(mCommentClickedCount);
                     mCurCommentCount = 0;
                     mCommentClickedCount = 0;
                     //mListViewFound = false;
@@ -146,8 +150,8 @@ public class CommonListService extends BaseAccessibilityService {
             L.i("clickNode size: " + mCurCommentCount);
             // L.i("titleNode size: " + titleNodeList.size());
             if (mCurCommentCount > 0 && mCommentClickedCount < mCurCommentCount) {
-                final AccessibilityNodeInfo clickNodeInfo = clickNodeList.get(mCommentClickedCount);
-               /* AccessibilityNodeInfo titleNodeInfo = titleNodeList.get(mCommentClickedCount);
+                AccessibilityNodeInfo clickNodeInfo = clickNodeList.get(mCommentClickedCount);
+                AccessibilityNodeInfo titleNodeInfo = titleNodeList.get(mCommentClickedCount);
                 if (mLastNodeInfo != null) {    //最后一个,防止重复发最后一个
                     if (mLastNodeInfo.getText().toString().equals(titleNodeInfo.getText().toString())) {
                         L.i("the last comment already sent");
@@ -155,7 +159,7 @@ public class CommonListService extends BaseAccessibilityService {
                         if (mCommentClickedCount < mCurCommentCount)
                             clickNodeInfo = clickNodeList.get(mCommentClickedCount);
                     }
-                }*/
+                }
 
                 performViewClick(clickNodeInfo);
             } else {
@@ -174,15 +178,14 @@ public class CommonListService extends BaseAccessibilityService {
         final AccessibilityNodeInfo talkInfo = findViewByText("私信", true);
         if (talkInfo != null && talkInfo.getClassName().equals(Constants.Widget.TextView)) {
             L.i("talk info: " + talkInfo.getText().toString());
-            mCurPageType = PageType.USER_INFO_PAGE;
+            mCurPageType = PageTypeEnum.USER_INFO_PAGE;
 
             mHandler.postDelayed(new Runnable() {
                 @Override
                 public void run() {
                     performViewClick(talkInfo);
                 }
-            }, 2000);
-
+            }, mPageSwitchTime * 1000);
         }
     }
 
@@ -196,15 +199,14 @@ public class CommonListService extends BaseAccessibilityService {
 
         if (nodeInfo.getClassName() != null && nodeInfo.getClassName().equals(Constants.Widget.EditText)) {
             L.i("editText ClassName: " + nodeInfo.getClassName());
-            mCurPageType = PageType.SEND_MSG_PAGE;
+            mCurPageType = PageTypeEnum.SEND_MSG_PAGE;
             findHistoryMsg(getRootInActiveWindow());
-            AccessibilityNodeInfo editNode = nodeInfo;
-            L.i("ediText parent: " + editNode.getParent().getClassName());
-            L.i("send node : " + editNode.getParent().getChild(1).getClassName());
+            L.i("ediText parent: " + nodeInfo.getParent().getClassName());
+            L.i("send node : " + nodeInfo.getParent().getChild(1).getClassName());
             //private boolean mListViewFound;
-            AccessibilityNodeInfo sendNode = editNode.getParent().getChild(1).getChild(0);
+            AccessibilityNodeInfo sendNode = nodeInfo.getParent().getChild(1).getChild(0);
             if (mHistoryNode == null) {
-                doTalkOnPage(editNode, sendNode);
+                doTalkOnPage(nodeInfo, sendNode);
             } else {
                 performBack();
             }
@@ -218,7 +220,7 @@ public class CommonListService extends BaseAccessibilityService {
      */
     private void doTalkOnPage(AccessibilityNodeInfo editNode, AccessibilityNodeInfo sendNode) {
         Bundle arguments = new Bundle();
-        arguments.putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, mMsg);
+        arguments.putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, mCommentMsg);
         editNode.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, arguments);
         performViewClick(sendNode);
         performBack();  //todo 网络延时
@@ -244,4 +246,9 @@ public class CommonListService extends BaseAccessibilityService {
 
 
     private Handler mHandler = new Handler(Looper.getMainLooper());
+
+    @Override
+    public void onBackPressed(PageTypeEnum lastPageType) {
+        performBack();
+    }
 }

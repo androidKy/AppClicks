@@ -9,42 +9,16 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
-        <activity android:name=".MainActivity">
-            <intent-filter>
+        <activity android:name=".MainActivity"
+            android:theme="@style/AppTheme.NoActionBar">
+          <!--  <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
+            </intent-filter>-->
         </activity>
 
-        <!-- <service
-             android:name=".AutoClickService"
-             android:exported="false"
-             android:label="AutoClickService"
-             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
-             <intent-filter>
-                 <action android:name="android.accessibilityservice.AccessibilityService" />
-             </intent-filter>
-
-             <meta-data
-                 android:name="android.accessibilityservice"
-                 android:resource="@xml/accessible_service_config" />
-         </service>-->
-        <!--   <service
-               android:name=".service.VideoCommentService"
-               android:exported="false"
-               android:label="VideoCommentService"
-               android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
-               <intent-filter>
-                   <action android:name="android.accessibilityservice.AccessibilityService" />
-               </intent-filter>
-
-               <meta-data
-                   android:name="android.accessibilityservice"
-                   android:resource="@xml/accessible_service_config" />
-           </service>-->
         <service
-            android:name=".service.CommonListService"
+            android:name=".service.CommonService"
             android:exported="false"
             android:label="CommonListService"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
@@ -56,6 +30,16 @@
                 android:name="android.accessibilityservice"
                 android:resource="@xml/accessible_base_service" />
         </service>
+
+        <activity
+            android:name=".NavigationActivity"
+            android:label="@string/title_activity_navigation"
+            android:theme="@style/AppTheme.NoActionBar">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
     </application>
 
 </manifest>

@@ -1,8 +1,6 @@
 package com.app.appclicks.base;
 
 import android.accessibilityservice.AccessibilityService;
-import android.accessibilityservice.AccessibilityServiceInfo;
-import android.annotation.TargetApi;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
@@ -12,14 +10,9 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.provider.Settings;
 import android.text.TextUtils;
-import android.util.Log;
 import android.view.accessibility.AccessibilityEvent;
-import android.view.accessibility.AccessibilityManager;
 import android.view.accessibility.AccessibilityNodeInfo;
-import android.widget.EditText;
 
-import com.app.appclicks.service.VideoCommentService;
-import com.app.appclicks.util.Constants;
 import com.safframework.log.L;
 
 import java.util.List;
@@ -57,16 +50,21 @@ public abstract class BaseAccessibilityService extends AccessibilityService {
         }
         return mInstance;
     }*/
-    protected static String mMsg;
+    public static String mCommentMsg;
+    public static String mAttentionMsg;
 
-    public static void setMsg(String msg) {
-        mMsg = msg;
+    public static void setCommentMsg(String msg) {
+        mCommentMsg = msg;
+    }
+
+    public static void setAttentionMsg(String attentionMsg) {
+        mAttentionMsg = attentionMsg;
     }
 
     /**
      * 检查是否已开启点击自动服务
      *
-     * @param canonicalName VideoCommentService.class.getCanonicalName()
+     * @param canonicalName
      * @return
      */
     public static boolean isAccessibilitySettingsOn(Context context, String canonicalName) {
@@ -159,15 +157,29 @@ public abstract class BaseAccessibilityService extends AccessibilityService {
                     public void run() {
                         performGlobalAction(GLOBAL_ACTION_BACK);
                     }
-                }, 2000);
+                }, 1000);
             }
-        }, 2000);
+        }, 1000);
         /*try {
             Thread.sleep(500);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }*/
+    }
 
+    public void performBackClick(final Handler handler, final int pageSwitchTime) {
+        handler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                performGlobalAction(GLOBAL_ACTION_BACK);
+                handler.postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        performGlobalAction(GLOBAL_ACTION_BACK);
+                    }
+                }, pageSwitchTime * 1000);
+            }
+        }, pageSwitchTime * 1000);
     }
 
     /**
@@ -234,25 +246,6 @@ public abstract class BaseAccessibilityService extends AccessibilityService {
                     return nodeInfo;
                 }
             }
-        }
-        return null;
-    }
-
-    /**
-     * 根据控件名称查找视频界面的listView
-     *
-     * @return
-     */
-    protected AccessibilityNodeInfo findListViewInVideoPage() {
-        AccessibilityNodeInfo rootNode = getRootInActiveWindow();
-        // L.i("root className: " + rootNode.getClassName());
-        AccessibilityNodeInfo slideFrameLayout = rootNode.getChild(0);
-        // L.i("root next className: " + slideFrameLayout.getClassName()); //com.bytedance.article.baseapp.app.slideback.SlideFrameLayout
-        AccessibilityNodeInfo listViewNode = slideFrameLayout.getChild(1).getChild(1);
-        // .getChild(0).getChild(0).getChild(0);//1，1，0，0，0，1，0，0，0
-        if (listViewNode != null && listViewNode.getClassName().equals(Constants.Widget.ListView)) {
-            // L.i("root listView className: " + listViewNode.getClassName() + " resourceId = " + listViewNode.getViewIdResourceName());
-            return listViewNode;
         }
         return null;
     }

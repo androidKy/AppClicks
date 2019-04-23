@@ -1,4 +1,4 @@
-package com.app.appclicks.service;
+package com.app.appclicks.service.type;
 
 import android.accessibilityservice.AccessibilityService;
 import android.accessibilityservice.AccessibilityServiceInfo;

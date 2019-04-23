@@ -1,11 +1,11 @@
-package com.app.appclicks.service;
+package com.app.appclicks.enum_type;
 
 /**
  * description:
  * author:kyXiao
  * date:2019/4/23
  */
-public enum PageType {
+public enum PageTypeEnum {
 
     COMMENT_PAGE("comment_page"),
     USER_INFO_PAGE("user_info_page"),
@@ -13,7 +13,7 @@ public enum PageType {
 
     public String pageType;
 
-    private PageType(String pageType) {
+    private PageTypeEnum(String pageType) {
         this.pageType = pageType;
     }
 }
