@@ -1,6 +1,6 @@
 # AppClicks
 auto to click comments and send msgs for today news.
-# notice
+# Notice
 it just a personal project,please do not use it to obey the lawer.
 # License
 Copyright 2019 kyXiao
