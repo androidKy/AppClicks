@@ -1,9 +1,8 @@
 # AppClicks
 今日头条自动点击评论，自动发私信
 # License
-   Copyright 2019 kyXiao
-   
-   Licensed under the Apache License, Version 2.0 (the "License");
+Copyright 2019 kyXiao
+Licensed under the Apache License, Version 2.0 (the "License");
    
    you may not use this file except in compliance with the License.
    
