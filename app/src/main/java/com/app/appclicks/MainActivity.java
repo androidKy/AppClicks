@@ -12,8 +12,8 @@ import android.widget.EditText;
 import android.widget.Toast;
 
 import com.app.appclicks.base.BaseAccessibilityService;
-import com.app.appclicks.service.CommonService;
 import com.app.appclicks.util.Constants;
+import com.app.appclicks.wxservice.WxService;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
     private static final String TAG = "MainActivity";
@@ -22,6 +22,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private EditText etAttention;
     private Button btComment;
     private Button btAttention;
+    private EditText etNewsCount;
+    private Button btTencentNews;
 
 
     @Override
@@ -39,17 +41,22 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         etComment = findViewById(R.id.et_comment);
         btAttention = findViewById(R.id.bt_attention);
         btComment = findViewById(R.id.bt_comment);
+        etNewsCount = findViewById(R.id.et_newsCount);
+        btTencentNews = findViewById(R.id.bt_tencentNews);
+
         initListener();
     }
+
 
     private void initListener() {
         btComment.setOnClickListener(this);
         btAttention.setOnClickListener(this);
+        btTencentNews.setOnClickListener(this);
     }
 
     @Override
     public void onClick(View v) {
-        if (!BaseAccessibilityService.isAccessibilitySettingsOn(this, CommonService.class.getCanonicalName())) {
+        if (!BaseAccessibilityService.isAccessibilitySettingsOn(this, WxService.class.getCanonicalName())) {
             Intent intent = new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS);
             startActivity(intent);
             return;
@@ -61,8 +68,24 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             case R.id.bt_comment:
                 sendComment();
                 break;
+            case R.id.bt_tencentNews:
+                lookNews();
+                break;
         }
 
+    }
+
+    private void lookNews() {
+        String newsCount = etNewsCount.getText().toString();
+        if (!TextUtils.isEmpty(newsCount) && Integer.valueOf(newsCount) <= 0) {
+            Toast.makeText(this, "浏览次数必须大于1", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        Intent launchIntentForPackage = packageManager.getLaunchIntentForPackage(Constants.Package.WE_CHAT);
+        if (launchIntentForPackage != null) {
+            startActivity(launchIntentForPackage);
+        }
     }
 
     /**

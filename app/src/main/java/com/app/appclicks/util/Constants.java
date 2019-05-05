@@ -1,5 +1,7 @@
 package com.app.appclicks.util;
 
+import org.jetbrains.annotations.Nullable;
+
 /**
  * description:
  * author:kyXiao
@@ -10,6 +12,7 @@ public class Constants {
 
     public interface Package {
         String TODAY_NEWS = "com.ss.android.article.news";
+        String WE_CHAT = "com.tencent.mm";
     }
 
     public interface Widget {
@@ -19,6 +22,7 @@ public class Constants {
         String LinearLayout = "android.widget.LinearLayout";
         String FrameLayout = "android.widget.FrameLayout";
         String EditText = "android.widget.EditText";
+        String WebView = "com.tencent.tbs.core.webkit.WebView";
     }
 
     public interface ResourceId {

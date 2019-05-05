@@ -11,7 +11,7 @@ import com.safframework.log.L
  * date: 2019/4/23
  */
 abstract class AbstractFactoryService : FactoryService {
-    private var mHandler: Handler? = null
+    protected var mHandler: Handler = Handler(Looper.getMainLooper())
     protected var mMsgSentCount: Int = 0  //消息发送统计
 
     public fun getHandler(): Handler {
@@ -27,6 +27,7 @@ abstract class AbstractFactoryService : FactoryService {
      * @param nodeInfo nodeInfo
      */
     fun performViewClick(nodeInfo: AccessibilityNodeInfo?) {
+        //  nodeInfo?.performAction(AccessibilityNodeInfo.ACTION_CLICK)
         var nodeInfo: AccessibilityNodeInfo? = nodeInfo ?: return
         while (nodeInfo != null) {
             if (nodeInfo.isClickable) {
@@ -35,6 +36,15 @@ abstract class AbstractFactoryService : FactoryService {
             }
             nodeInfo = nodeInfo.parent
         }
+    }
+
+    /**
+     * 延迟多少秒点击
+     */
+    fun performViewClick(nodeInfo: AccessibilityNodeInfo?, timeDelay: Long) {
+        mHandler.postDelayed({
+            performViewClick(nodeInfo)
+        }, timeDelay * 1000)
     }
 
     /**
@@ -49,6 +59,16 @@ abstract class AbstractFactoryService : FactoryService {
         } catch (e: InterruptedException) {
             L.e(e.message, e)
         }
+    }
+
+    /**
+     * 模拟上滑操作
+     */
+    fun performScrollForward(nodeInfo: AccessibilityNodeInfo?,timeDelay:Long){
+        if(nodeInfo == null) return
+        mHandler.postDelayed({
+            nodeInfo.performAction(AccessibilityNodeInfo.ACTION_SCROLL_FORWARD)
+        },timeDelay * 1000)
     }
 
     /**
@@ -75,6 +95,28 @@ abstract class AbstractFactoryService : FactoryService {
             for (nodeInfo in nodeInfoList!!) {
                 if (nodeInfo != null && nodeInfo!!.isClickable() == clickable) {
                     return nodeInfo
+                }
+            }
+        }
+        return null
+    }
+
+    /**
+     * 根据AccessibilityNodeInfo查找对应ID的view
+     *
+     * @param nodeInfo
+     * @param id
+     * @return
+     */
+    fun findViewByNodeId(nodeInfo: AccessibilityNodeInfo?, id: String): AccessibilityNodeInfo? {
+        if (nodeInfo == null) {
+            return null
+        }
+        val nodeInfoList = nodeInfo.findAccessibilityNodeInfosByViewId(id)
+        if (nodeInfoList != null && !nodeInfoList.isEmpty()) {
+            for (node in nodeInfoList) {
+                if (node != null) {
+                    return node
                 }
             }
         }

@@ -144,6 +144,10 @@ public abstract class BaseAccessibilityService extends AccessibilityService {
         }
     }
 
+    public void performBackClick(){
+        performGlobalAction(GLOBAL_ACTION_BACK);
+    }
+
     /**
      * 模拟返回操作
      */
